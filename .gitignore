@@ -1,4 +1,7 @@
-files/
+tiles/
 venv
 modified_since_cache.pkl
 *.swp
+tile_availability.js
+tile_availability.json
+__pycache__/

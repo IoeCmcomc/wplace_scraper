@@ -1,36 +1,58 @@
-# wplacescrape
+# wplace_scraper
 
-A quickly improvised script to scrape pixel art tiles from wplace.live (think r/place but it's on a world map)
+Bản sửa đổi của https://github.com/benjamin-lowry/wplacescrape.
 
-## Usage
+## Hướng dẫn
 
-No arguments implemented. Just install aiohttp and run ``python3 wplacescrape.py``.
+### Cài đặt
 
-Tiles will be saved relative to the current working directory as files/s0/tiles/[x]/[y]/[timestamp]\.png, where x and y are the coordinates of the map tile and timestamp is the UNIX timestamp (seconds since 1 Jan 1970) when that tile on the map was last modified. The entire map will be downloaded (this should take ~15.7 hours). Requests will be rate-limited to 5 per second to avoid melting their server.
+1. Cài đặt Python về máy tính. Khuyên dùng Python 3.11 trở lên. 
+2. Cài đặt các thư viện cần thiết: `pip install aiohttp xxhash`.
+3. Tải mã nguồn chương trình.
+Cách 1: Chọn nút *Code* màu xanh lục, rồi chọn *Download ZIP*. Sau khi tải xong thì giải nén ra 1 thư mục.
+Cách 2 (nếu có git): `git clone https://github.com/benjamin-lowry/wplacescrape.git`
 
-## Technical notes
+### Cấu hình
 
-Underlying world map is MapLibre/Mapbox tiles (this code doesn't save those, it should be easy to get them somewhere else). Pixels get streamed in from urls like https://backend.wplace.live/files/s0/tiles/[x]/[y].png, where x is an integer 0-2047 based on longitude and y is an integer 0-137 based on latitude. (No idea what "s0" means; "season zero"? Are they going to reset the map at some point and increment it?) Each png is 1000x1000 pixels, giving a total canvas size of 2048000x138000 and 282624 tiles in total. The pngs are served from a regular nginx server behind Cloudflare, no attempt is made to authenticate requests (they don't block curl user-agents either). They've probably set Cloudflare to a low blocking setting because the requests are all initiated by XHR through a service worker so there'd be no opportunity for a legitimate (i.e. browser) user to solve a captcha if Cloudflare served one.
+Mặc định, chương trình sẽ cào trong khu vực Việt Nam và biển Đông. Do quét theo hình chữ nhật nên sẽ có cả một phần của Lào và Campuchia.
 
-The default setting is to make 5 requests by second (by limiting the number of active workers to 5 and making each one sleep 1 second after a successful request), meaning it should take approximately 282,624/5  = 56,524.8 seconds (around 15.7 hours) to download the entire map. (If you try to make more than 5 requests per second, Cloudflare will rate limit you.)
+Để thay đổi, mở tệp `config.py` và chỉnh sửa các hằng số cơ bản sau:
+* `FROM_X`: bắt đầu cào từ tấm thứ bao nhiêu theo chiều ngang.
+* `FROM_Y`: như `FROM_X`, nhưng là theo chiều dọc
+* `TO_X`: kết thúc của `FROM_X`
+* `TO_Y`: kết thúc của `FROM_Y`
+Để lấy vị trí tấm (tile), vào wplace.live, chọn 1 điểm ảnh (pixel) bất kì, sẽ thấy *Tl X* và *Tl Y* là 2 toạ độ vị trí của tấm đó.
 
-## TODOs
+Mở tệp `index.htm`, tìm đến chỗ có `timeInterval` bên trong `timeDimensionOptions`, đặt thành khoảng thời gian mà dữ liệu của bạn xem được. 
 
-- A way to view the map offline (could just copy wplace.live and point it at the local archive, or do something fancier)
-- A way to specify specific areas to scrape rather than the entire map (e.g. only continents as opposed to ocean, only major cities, etc.)
+### Cào dữ liệu
+Mỗi ngày, hãy chạy tệp `archive.py` một lần. Nếu thấy dòng `Deleted <số> tiles.` và chương trình kết thúc là thành công. Một thư mục tên là `tiles` sẽ chứa tất cả dữ liệu ảnh. Nếu bị lỗi gì đó mà không biết sửa thì hãy xoá thư mục của ngày hôm nay (bên trong `tiles`) đi và chạy lại.
 
-## License
+### Xem dữ liệu
+Sau khi cào xong (lần đầu hay hôm sau), sẽ xuất hiện 1 tệp tên là `tile_availability.js`. Nếu không có tệp này thì không xem được bản đồ.
 
-Copyright 2025 Benjamin Lowry
+Mở tệp `index.htm` bằng trình duyệt bất kì. Giao diện bản đồ sẽ xuất hiện như sau:
+[chưa có hình]
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+*(Để đổi toạ độ ban đầu, hãy sửa hằng số `START_COORDS` trong tệp `index.htm`)*
 
-http://www.apache.org/licenses/LICENSE-2.0
+Các tính năng thì cũng như bản đồ thông thường thôi. Nếu đã cào được nhiều ngày thì có thể dùng thanh trượt thời gian để xem ở các mốc khác nhau.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Bạn có thể dùng OBS hoặc ShareX để tạo ảnh/video thời gian trôi (timelapse).
+
+## Trợ giúp
+Để báo lỗi và đề xuất tính năng, hãy vào phần [Issues](https://github.com/IoeCmcomc/wplace_scraper/issues "Issues"). Nếu có những thắc mắc liên quan đến chương trình, hãy vào mục [Discussions](https://github.com/IoeCmcomc/wplace_scraper/discussions "Discussions").
+
+## Lời từ chối trách nhiệm
+Phần mềm được tạo ra với sự hỗ trợ của mô hình ngôn ngữ lớn.
+
+Nội dung do bạn cào từ Wplace về thuộc sở hữu của trang web đó và những người đóng góp.
+
+Phần mềm này và tôi không liên kết hoặc quen biết với wplace.live.
+
+## Giấy phép
+
+Bản quyền 2025 Benjamin Lowry,
+Bản quyền 2025-2026 IoeCmcomc
+
+Phần mềm được phát hành dưới giấy phép Apache 2.0.

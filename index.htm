@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wplace.live archive viewer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.nontiledlayer@1.0.9/dist/NonTiledLayer.js" integrity="sha256-wqCmCWC6p8NkyNpPf5q5zkgBg8csYrt25qzyFgRM7Uc=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet.gridlayer.fadeout@0.1.0/Leaflet.GridLayer.FadeOut.min.js"></script> -->
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script type="text/javascript" src="tile_availability.js"></script>
+    <style>
+html, body {
+   margin: 0;
+   padding: 0;
+}
+#map {
+    height: 100vh;
+    width: 100%;
+    background-color: #e4fcfe;
+}
+/* .wplace-layer {
+    z-index: 50 !important;
+}
+.wplace-heatmap-layer {
+    z-index: 500 !important;
+} */
+/* Leaflet crispness override */
+.wplace-layer img {
+  max-width: none !important;
+  /* Preserve crisp pixels with scaled up images */
+  image-rendering: optimizeSpeed;             /* Legal fallback */
+  image-rendering: -moz-crisp-edges;          /* Firefox        */
+  image-rendering: -o-crisp-edges;            /* Opera          */
+  image-rendering: -webkit-optimize-contrast; /* Safari         */
+  image-rendering: optimize-contrast;         /* CSS3 Proposed  */
+  image-rendering: crisp-edges;               /* CSS4 Proposed  */
+  image-rendering: pixelated;                 /* CSS4 Proposed  */
+  -ms-interpolation-mode: nearest-neighbor;   /* IE8+           */
+}
+
+.leaflet-control-custom {
+    background: white;
+    padding: 5px;
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Search Control Styles */
+.search-input {
+    padding: 6px;
+    width: 250px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+}
+
+/* Button Styles */
+.btn-action {
+    padding: 6px 10px;
+    background-color: #0078A8;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-action:hover { background-color: #005a7d; }
+
+/* Share Control Styles */
+.btn-share {
+    background-color: #28a745; /* Màu xanh lá */
+}
+.btn-share:hover { background-color: #218838; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script type="text/javascript">
+const START_COORDS = [21.028511, 105.804817] // Hà Nội
+var map = L.map('map', {
+    zoom: 11,
+    center: START_COORDS,
+    zoomSnap: 0.125,
+    zoomDelta: 0.125,
+    timeDimension: true,
+    timeDimensionOptions: {
+        timeInterval: "2025-08-18/2026-01-26",
+        period: "P1D"
+    },
+    timeDimensionControl: true,
+});
+map.attributionControl.setPrefix('');
+
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; Những người đóng góp <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    zIndex: 0,
+    className: 'osm-layer',
+});
+
+const ggmaps = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=vi',{
+    attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>',
+    zIndex: 0,
+    className: 'ggmaps-layer',
+    subdomains:['mt0','mt1','mt2','mt3']
+}).addTo(map);
+
+const Esri_WorldTopoMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community',
+    zIndex: 0,
+    className: 'esri-topo-layer',
+});
+
+const wikimedia = L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}@1.3x.png?lang=vi', {
+    attribution: '<a href="https://foundation.wikimedia.org/wiki/Maps_Terms_of_Use" class="external">Bản đồ Wikimedia</a> | Dữ liệu bản đồ &copy; <a href="https://www.openstreetmap.org/copyright/vi" class="external">những người đóng góp OpenStreetMap</a></div>',
+    zIndex: 0,
+    className: 'wikimedia-layer',
+});
+
+const waze = L.tileLayer('https://worldtiles1.waze.com/tiles/{z}/{x}/{y}.png?highres=true', {
+    attribution: '&copy; <a href="https://www.waze.com/live-map">Waze Map</a>',
+    zIndex: 0,
+    className: 'waze-layer',
+});
+
+L.TileLayer.Wikimapia = L.TileLayer.extend({
+    options: {
+        attribution: '&copy; Những người đóng góp <a href="https://wikimapia.org">Wikimapia</a>',
+        zIndex: 0,
+        className: 'wikimapia-layer',
+    },
+
+    getTileUrl: function(coords) {
+        var s = coords.x % 4 + (coords.y % 4) * 4;
+        return `https://i${s}.wikimapia.org/?x=${coords.x}&y=${coords.y}&zoom=${coords.z}&type=map&lng=38`;
+    },
+});
+
+L.tileLayer.wikimapia = function() {
+    return new L.TileLayer.Wikimapia();
+}
+
+const wikimapia = L.tileLayer.wikimapia();
+
+const vbd = L.tileLayer('http://images.vietbando.com/ImageLoader/GetImage.ashx?LayerIds=RC_VN&Level={z}&X={x}&Y={y}', {
+    attribution: '&copy; <a href="https://maps.vietbando.com">Vietbando</a>',
+    zIndex: 0,
+    className: 'vbd-layer',
+});
+
+const vndms_admin = L.tileLayer('https://vndms.dmptc.gov.vn/VNBase/{z}/{x}/{y}.png', {
+    attribution: '<a href="https://vndms.dmc.gov.vn">Hệ thống giám sát thiên tai Việt Nam</a>, &copy; Cục Quản lý đê điều và Phòng, chống thiên tai',
+    zIndex: 0,
+    className: 'vndms-admin-layer',
+});
+
+const dark_color_layer = L.tileLayer('./tiles/dark.webp', {
+    zIndex: -1,
+});
+
+const vndms_dark_base = L.tileLayer('https://vndms.dmptc.gov.vn/VNDark/{z}/{x}/{y}.png', {
+    attribution: '<a href="https://vndms.dmc.gov.vn">Hệ thống giám sát thiên tai Việt Nam</a>, &copy; Cục Quản lý đê điều và Phòng, chống thiên tai',
+    zIndex: 0,
+    className: 'vndms-admin-layer',
+});
+
+const vndms_dark = L.layerGroup([dark_color_layer, vndms_dark_base]);
+
+const narenca_details = L.tileLayer.wms('https://email.bando.com.vn/cgi-bin/qgis_mapserv.fcgi.exe?', {
+    attribution: '&copy; <a href="https://cosodulieu.bando.com.vn/">NXB Bản đồ Việt Nam</a>',
+    zIndex: 0,
+    className: 'narenca-details-layer',
+    layers: ',BienDaoA_NuocNgoai,BienDaoA_250N,DiaPhanHanhChinhCapXa_2025,BoBienGioiQuocGia_250N,MatNuocSongSuoi_250N,KenhMuongA_250N,MatNuocTinh_250N,KenhMuongL_250N,MangDongChay_250N,DuongBo_250N,DuongSat_250N,DuongDiaGioiHanhChinhCapXa_2025,DuongDiaGioiHanhChinhCapTinh_2025,DuongBienGioiQuocGiaTrenDatLien_2025,CongTrinhCongNghiep_250N,CongTrinhTheThao_250N,CongTrinhThuongMaiDichVu_250N,CongTrinhTonGiaoTinNguong_250N,CongTrinhVanHoa_250N,DiaDanhDanCu_250N,UyBanNhanDanCapXa_2025,PhanTangDoSau,DiaPhanHanhChinhQuocGia_TG,BoBienGioiQuocGia1000,BoBienGioiQuocGia5000,DiaPhanHanhChinhQuocGia,DiaPhanHanhChinhCapTinh_SN,NuocMat,DuongDiaGioiHanhChinhTinh_SN_2.5Tr,ThuyHeKhacS,ThuyHeKhacC,MangDongChay,DuongBoNuoc,DuongBo,DuongSat,DuongDiaGioiHanhChinhTinh_SN_1Tr,DuongBienGioiQuocGia,DuongBienGioiQuocGia_TG,BienDaoP,CongTrinhGiaoThongP,CongTrinhVanHoaKinhTeXaHoi,DiaDanhDanCu,ThuDoCacNuoc',
+    format: 'image/png',
+    transparent: false,
+    version: '1.3.0',
+    map: 'd:/qgisserver/hcvn_08092025/hcvn_hn_w2.qgz',
+});
+
+const narenca_names = L.nonTiledLayer.wms('https://email.bando.com.vn/cgi-bin/qgis_mapserv.fcgi.exe?', {
+    attribution: '&copy; <a href="https://cosodulieu.bando.com.vn/">NXB Bản đồ Việt Nam</a>',
+    zIndex: 1,
+    className: 'narenca-names-layer',
+    layers: 'tbando',
+    format: 'image/png',
+    transparent: true,
+    version: '1.3.0',
+    map: 'd:/qgisserver/hcvn_08092025/hcvn_t1.qgz',
+    tiled: 'true',
+});
+
+const narenca = L.layerGroup([narenca_details, narenca_names]);
+
+const vientham = L.nonTiledLayer.wms('https://dulieuvientham.gov.vn/geoserver/wms?', {
+    attribution: '&copy; <a href="https://dulieuvientham.gov.vn/">CSDL viễn thám quốc gia Việt Nam</a>',
+    zIndex: 0,
+    className: 'vientham-layer',
+    layers: 'csdlvt:csdlvt_basemap_32648_new',
+    format: 'image/png',
+    transparent: false,
+    version: '1.1.1',
+});
+
+const huay_admin = L.tileLayer('https://raw.githubusercontent.com/IoeCmcomc/HuayAtlas/refs/heads/main/project/resources/map_tiles/administrative/{z}/{x}/{y}.png',{
+    attribution: '&copy; <a href="https://github.com/IoeCmcomc/HuayAtlas">HuayAtlas</a>',
+    zIndex: 0,
+    className: 'huay-admin-layer',
+    minNativeZoom: 5,
+    maxNativeZoom: 10,
+});
+
+const huay_transp = L.tileLayer('https://raw.githubusercontent.com/IoeCmcomc/HuayAtlas/refs/heads/main/project/resources/map_tiles/transportation/{z}/{x}/{y}.png',{
+    attribution: '&copy; <a href="https://github.com/IoeCmcomc/HuayAtlas">HuayAtlas</a>',
+    zIndex: 0,
+    className: 'huay-transp-layer',
+    minNativeZoom: 5,
+    maxNativeZoom: 10,
+});
+
+const tphcm = L.tileLayer('https://bando.tphcm.gov.vn/service/gisp/tile/HCMGIS/{z}/{x}/{y}', {
+    attribution: '&copy; <a href="https://bando.tphcm.gov.vn">Bản đồ số TP.HCM</a>',
+    zIndex: 0,
+    className: 'tphcm-layer',
+});
+
+const ggmaps_satel = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=vi',{
+    attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>, Airbus, CNES, Maxar Technologies',
+    zIndex: 0,
+    className: 'ggmaps-satel-layer',
+    subdomains:['mt0','mt1','mt2','mt3']
+});
+
+const sentinel_2024 = L.tileLayer('https://tiles.maps.eox.at/wmts?layer=s2cloudless-2024_3857&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={z}&TileCol={x}&TileRow={y}',{
+    attribution: 'Sentinel-2 cloudless by <a href="https://eox.at" target="_blank">EOX IT Services GmbH</a> | Contains modified <a href="http://www.copernicus.eu/en" target="_blank">Copernicus Sentinel data 2024</a>, released under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a>',
+    zIndex: 0,
+    className: 'sentinel-2024-layer',
+    maxNativeZoom: 15,
+});
+
+const wplace_common_options = {
+    attribution: '&copy; Những người đóng góp <a href="https://wplace.live">wplace.live</a>',
+    // zIndex: 50,
+    className: 'wplace-layer',
+    minNativeZoom: 11,
+    maxNativeZoom: 11,
+    minZoom: 8,
+    <!-- errorTileUrl: 'tiles/missing.webp', -->
+};
+
+function getWplaceUrl(coords, date) {
+    if ((typeof tileAvailability === 'undefined') ||  (!tileAvailability)) {
+        console.warn(`Tile availability data not loaded yet.`);
+        return `./tiles/${date}/${coords.x}/${coords.y}.webp`;
+    }
+    if (!(coords.x in tileAvailability)) {
+        console.warn(`No availability data for x=${coords.x}`);
+        return '';
+    }
+    const availableDates = tileAvailability[coords.x][coords.y];
+    if (!availableDates || availableDates.length === 0) {
+        console.warn(`No available dates for tile at (${coords.x}, ${coords.y})`);
+        return '';
+    }
+    if (date && availableDates.includes(date)) {
+        return `./tiles/${date}/${coords.x}/${coords.y}.webp`;
+    } else {
+        const allLower = availableDates.filter(x => x < date);
+        if (allLower.length === 0) {
+            console.warn(`No available dates before ${date} for tile at (${coords.x}, ${coords.y})`);
+            return '';
+        }
+        const lowerBound = allLower[allLower.length - 1];
+        return `./tiles/${lowerBound}/${coords.x}/${coords.y}.webp`;
+    }
+}
+
+L.TileLayer.Wplace = L.TileLayer.extend({
+    options: wplace_common_options,
+
+    initialize: function(date, options) {
+        if (!/^\d{8}$/.test(date)) {
+            throw new Error(`Invalid date format: ${date}. Expected format is YYYYMMDD.`);
+        }
+        this.date = date; // The initial date string (YYYYMMDD).
+        L.TileLayer.prototype.initialize.call(this, '', options);
+    },
+
+    getTileUrl: function(coords) {
+        return getWplaceUrl(coords, this.date);
+    },
+});
+
+L.tileLayer.wplace = function(date, options) {
+    return new L.TileLayer.Wplace(date, options);
+}
+
+//Adapted from https://apps.socib.es/Leaflet.TimeDimension/examples/example16.html
+L.TimeDimension.Layer.TileLayer = L.TimeDimension.Layer.extend({});
+
+L.timeDimension.layer.tileLayer = function(layer, options) {
+    return new L.TimeDimension.Layer.TileLayer(layer, options);
+};
+
+L.TimeDimension.Layer.TileLayer.Wplace = L.TimeDimension.Layer.TileLayer.extend({
+    // Merge existing options with new transition defaults
+    options: L.extend({}, wplace_common_options, {
+        transitionTime: 1000,    // Time in ms for the crossfade
+        transitionBuffer: 1000,  // If updates happen faster than this, skip transition (instantly switch)
+        opacity: 1               // Default target opacity
+    }),
+
+    initialize: function(layer, options) {
+        L.TimeDimension.Layer.TileLayer.prototype.initialize.call(this, layer, options);
+        this._layers = {};
+        this._defaultTime = 0;
+        this._availableTimes = [];
+        this._timeCacheBackward = this.options.cacheBackward || this.options.cache || 0;
+        this._timeCacheForward = this.options.cacheForward || this.options.cache || 0;
+        
+        // Track the last time a layer was shown to calculate speed
+        this._lastUpdateTimestamp = 0;
+        this._transitionTimeout = null;
+
+        this._baseLayer.on('load', (function() {
+            this._baseLayer.setLoaded(true);
+            this.fire('timeload', {
+                time: this._defaultTime
+            });
+        }).bind(this));
+    },
+
+    eachLayer: function(method, context) {
+        for (var prop in this._layers) {
+            if (this._layers.hasOwnProperty(prop)) {
+                method.call(context, this._layers[prop]);
+            }
+        }
+        return L.TimeDimension.Layer.TileLayer.prototype.eachLayer.call(this, method, context);
+    },
+
+    _onNewTimeLoading: function(ev) {
+        var layer = this._getLayerForTime(ev.time);
+        if (!this._map.hasLayer(layer)) {
+            this._map.addLayer(layer);
+        }
+    },
+
+    isReady: function(time) {
+        var layer = this._getLayerForTime(time);
+        var currentZoom = this._map.getZoom();
+        if (layer.options.minZoom && currentZoom < layer.options.minZoom) {
+            return true;
+        }
+        if (layer.options.maxZoom && currentZoom > layer.options.maxZoom) {
+            return true;
+        }
+        return layer.isLoaded();
+    },
+
+    _update: function() {
+        if (!this._map)
+            return;
+        var time = this._timeDimension.getCurrentTime();
+        
+        var layer = this._getLayerForTime(time);
+        if (this._currentLayer == null) {
+            this._currentLayer = layer;
+        }
+        if (!this._map.hasLayer(layer)) {
+            this._map.addLayer(layer);
+        } else {
+            this._showLayer(layer, time);
+        }
+    },
+
+    setOpacity: function(opacity) {
+        // Update the global option
+        this.options.opacity = opacity;
+        L.TimeDimension.Layer.TileLayer.prototype.setOpacity.apply(this, arguments);
+        
+        // Apply to all preloaded caches
+        for (var prop in this._layers) {
+            if (this._layers.hasOwnProperty(prop) && this._layers[prop].setOpacity) {
+                // Only update layers that are NOT currently transitioning out
+                // (To avoid snapping a fading-out layer back to full opacity)
+                if (this._layers[prop] !== this._previousLayer) {
+                     this._layers[prop].setOpacity(opacity);
+                }
+            }
+        }
+    },
+
+    setZIndex: function(zIndex) {
+        L.TimeDimension.Layer.TileLayer.prototype.setZIndex.apply(this, arguments);
+        for (var prop in this._layers) {
+            if (this._layers.hasOwnProperty(prop) && this._layers[prop].setZIndex) {
+                this._layers[prop].setZIndex(zIndex);
+            }
+        }
+    },
+
+    _unvalidateCache: function() {
+        var time = this._timeDimension.getCurrentTime();
+        for (var prop in this._layers) {
+            if (time != prop && this._layers.hasOwnProperty(prop)) {
+                this._layers[prop].setLoaded(false);
+                this._layers[prop].redraw();
+            }
+        }
+    },
+
+    _evictCachedTimes: function(keepforward, keepbackward) {
+        var times = this._getLoadedTimes();
+        var strTime = String(this._currentTime);
+        var index = times.indexOf(strTime);
+        var remove = [];
+
+        // Note: We avoid removing layers that might be currently transitioning out
+        // by checking if they are the _previousLayer in the removal loop if needed.
+
+        if (keepbackward > -1) {
+            var objectsToRemove = index - keepbackward;
+            if (objectsToRemove > 0) {
+                remove = times.splice(0, objectsToRemove);
+                this._removeLayers(remove);
+            }
+        }
+        if (keepforward > -1) {
+            index = times.indexOf(strTime);
+            var objectsToRemove = times.length - index - keepforward - 1;
+            if (objectsToRemove > 0) {
+                remove = times.splice(index + keepforward + 1, objectsToRemove);
+                this._removeLayers(remove);
+            }
+        }
+    },
+
+    _showLayer: function(layer, time) {
+        var now = Date.now();
+        var timeDiff = now - this._lastUpdateTimestamp;
+        this._lastUpdateTimestamp = now;
+
+        var shouldSmooth = this.options.transitionTime > 0 && 
+                           this._currentLayer && 
+                           this._currentLayer !== layer &&
+                           timeDiff > this.options.transitionBuffer;
+
+        if (shouldSmooth) {
+            this._fadeInOut(this._currentLayer, layer, time);
+        } else {
+            // --- INSTANT SWITCH (No Transition) ---
+            if (this._currentLayer && this._currentLayer !== layer) {
+                this._currentLayer.hide();
+                this._currentLayer.setOpacity(this.options.opacity);
+                // Reset Z-index in case it was modified during a previous transition
+                if(this._currentLayer.setZIndex) this._currentLayer.setZIndex(this.options.zIndex);
+            }
+            layer.setOpacity(this.options.opacity);
+            if(layer.setZIndex) layer.setZIndex(this.options.zIndex);
+            layer.show();
+            
+            if(this._transitionTimeout) {
+                clearTimeout(this._transitionTimeout);
+                this._transitionTimeout = null;
+            }
+            this._currentLayer = layer;
+            this._currentTime = time;
+            this._evictCachedTimes(this._timeCacheForward, this._timeCacheBackward);
+        }
+
+        console.log('Show layer with time: ' + new Date(time).toISOString() + (shouldSmooth ? ' (Smooth)' : ''));
+    },
+
+    _fadeInOut: function(oldLayer, newLayer, newTime) {
+        var totalDuration = this.options.transitionTime;
+        // Split the time: first half for appearing, second half for disappearing
+        var fadeDuration = totalDuration / 2; 
+        var targetOpacity = this.options.opacity;
+
+        // 1. Z-Index Management
+        // Crucial: New Layer must be ON TOP of Old Layer for "Fade In Over" to work
+        if (newLayer.setZIndex) {
+             newLayer.setZIndex(this.options.zIndex + 10);
+             oldLayer.setZIndex(this.options.zIndex);
+        } else {
+             newLayer.bringToFront();
+        }
+
+        // 2. Initial State
+        newLayer.setOpacity(0);
+        oldLayer.setOpacity(targetOpacity);
+        newLayer.show();
+        oldLayer.show(); // Ensure old layer remains visible
+
+        // 3. Prepare CSS Transitions using CSS Delay
+        var newContainer = newLayer.getContainer();
+        var oldContainer = oldLayer.getContainer();
+        
+        // New Layer: Fades In immediately (Duration: 1st half)
+        if (newContainer) {
+            newContainer.style.transition = 'opacity ' + fadeDuration + 'ms linear';
+        }
+        
+        // Old Layer: Fades Out AFTER delay (Delay: 1st half, Duration: 2nd half)
+        if (oldContainer) {
+            oldContainer.style.transition = 'opacity ' + fadeDuration + 'ms linear ' + fadeDuration + 'ms';
+        }
+
+        // 4. Trigger Animation (Next Frame)
+        requestAnimationFrame(() => {
+            newLayer.setOpacity(targetOpacity); // Starts immediately
+            oldLayer.setOpacity(0);             // Starts after delay (handled by CSS)
+        });
+
+        // 5. Cleanup logic
+        this._previousLayer = oldLayer;
+        this._currentLayer = newLayer;
+        this._currentTime = newTime;
+
+        if (this._transitionTimeout) clearTimeout(this._transitionTimeout);
+
+        this._transitionTimeout = setTimeout((function() {
+            // -- Animation Complete --
+            oldLayer.hide();
+            
+            // Clean CSS from Old Layer
+            if (oldContainer) oldContainer.style.transition = '';
+            oldLayer.setOpacity(targetOpacity); // Reset for future use
+            if (oldLayer.setZIndex) oldLayer.setZIndex(this.options.zIndex);
+
+            // Clean CSS from New Layer
+            if (newContainer) newContainer.style.transition = '';
+            if (newLayer.setZIndex) newLayer.setZIndex(this.options.zIndex);
+
+            this._previousLayer = null;
+            this._transitionTimeout = null;
+            
+            this._evictCachedTimes(this._timeCacheForward, this._timeCacheBackward);
+
+        }).bind(this), totalDuration + 50); // Small buffer to ensure CSS finished
+    },
+
+    _getLayerForTime: function(time) {
+        if (time == 0 || time == this._defaultTime || time == null) {
+            return this._baseLayer;
+        }
+        if (this._layers.hasOwnProperty(time)) {
+            return this._layers[time];
+        }
+        var nearestTime = this._getNearestTime(time);
+        if (this._layers.hasOwnProperty(nearestTime)) {
+            return this._layers[nearestTime];
+        }
+
+        var newLayer = this._createLayerForTime(nearestTime);
+
+        this._layers[time] = newLayer;
+
+        newLayer.on('load', (function(layer, time) {
+            layer.setLoaded(true);
+            if (!this._layers[time]) {
+                this._layers[time] = layer;
+            }
+            if (this._timeDimension && time == this._timeDimension.getCurrentTime() && !this._timeDimension.isLoading()) {
+                this._showLayer(layer, time);
+            }
+            this.fire('timeload', {
+                time: time
+            });
+        }).bind(this, newLayer, time));
+
+        newLayer.onAdd = (function(map) {
+            Object.getPrototypeOf(this).onAdd.call(this, map);
+            this.hide();
+        }).bind(newLayer);
+        return newLayer;
+    },
+
+    _createLayerForTime: function(time) {
+        var options = this._baseLayer.options;
+        var date = new Date(time);
+        date.setUTCHours(0, 0, 0, 0);
+        var dateFormatted = date.toISOString().substring(0, 10).replace(/-/g, '');
+        return new this._baseLayer._baseLayer.constructor(dateFormatted, options);
+    },
+
+    _getLoadedTimes: function() {
+        var result = [];
+        for (var prop in this._layers) {
+            if (this._layers.hasOwnProperty(prop)) {
+                result.push(prop);
+            }
+        }
+        return result.sort(function(a, b) {
+            return a - b;
+        });
+    },
+
+    _removeLayers: function(times) {
+        for (var i = 0, l = times.length; i < l; i++) {
+            // Do not remove the layer if it is currently being used as the "fade out" layer
+            if (this._previousLayer && this._layers[times[i]] === this._previousLayer) {
+                continue;
+            }
+            
+            if (this._map)
+                this._map.removeLayer(this._layers[times[i]]);
+            delete this._layers[times[i]];
+        }
+    },
+
+    setMinimumForwardCache: function(value) {
+        if (value > this._timeCacheForward) {
+            this._timeCacheForward = value;
+        }
+    },
+
+    _getNearestTime: function(time) {
+        if (this._layers.hasOwnProperty(time)) {
+            return time;
+        }
+        if (this._availableTimes.length == 0) {
+            return time;
+        }
+        var index = 0;
+        var len = this._availableTimes.length;
+        for (; index < len; index++) {
+            if (time < this._availableTimes[index]) {
+                break;
+            }
+        }
+        if (index > 0) {
+            index--;
+        }
+        if (time != this._availableTimes[index]) {
+            console.log('Search layer time: ' + new Date(time).toISOString());
+            console.log('Return layer time: ' + new Date(this._availableTimes[index]).toISOString());
+        }
+        return this._availableTimes[index];
+    },
+});
+
+L.timeDimension.layer.tileLayer.wplace = function(layer, options) {
+    return new L.TimeDimension.Layer.TileLayer.Wplace(layer, options);
+};
+
+var baseMaps = {
+    "Google Maps": ggmaps,
+    "OpenStreetMap": osm,
+    "Esri WorldTopoMap": Esri_WorldTopoMap,
+    "Wikimapia": wikimapia,
+    "Waze Map": waze,
+    "Wikimedia Map": wikimedia,
+    "HT giám sát thiên tai VN (hành chính, 2024)": vndms_admin,
+    "HT giám sát thiên tai VN (nền tối)": vndms_dark,
+    "Vietbando": vbd,
+    "NXB Bản đồ Việt Nam": narenca,
+    "CSDL viễn thám quốc gia": vientham,
+    "HuayAtlas (hành chính, 2022)": huay_admin,
+    "HuayAtlas (giao thông, 2022)": huay_transp,
+    "Bản đồ số TP.HCM": tphcm,
+    "Google Maps (vệ tinh)": ggmaps_satel,
+    "Sentinel-2 (vệ tinh, 2024)": sentinel_2024,
+};
+
+const wplaceBaseLayer = L.tileLayer.wplace('20250818', wplace_common_options);
+const wplace = L.timeDimension.layer.tileLayer.wplace(wplaceBaseLayer, {});
+const wplaceTime = L.timeDimension.layer.tileLayer.wplace(wplace, {
+    transitionTime: 150,    // 1 second transition
+    transitionBuffer: 180   // Only transition if the player is moving slower than 1.2s per frame
+}).addTo(map);
+
+const wplaceHeatmap = L.tileLayer(`./tiles/activity/{x}/{y}.webp`, {
+    ...wplace_common_options,
+    opacity: 0.75,
+    zIndex: 120,
+    className: 'wplace-heatmap-layer',
+});
+
+ const overlayMaps = {
+    "Lưu trữ Wplace Việt Nam": wplaceTime,
+ }
+
+var baseControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+const MY_LOCATIONS = []
+var SearchControl = L.Control.extend({
+    options: { position: 'topright' },
+
+    onAdd: function(map) {
+        this._map = map;
+        var container = L.DomUtil.create('div', 'leaflet-control-custom');
+        L.DomEvent.disableClickPropagation(container);
+
+        container.innerHTML = `
+            <input type="text" class="search-input" id="search-input" placeholder="Nhập toạ độ hoặc URL Google/WPlace...">
+            <button class="btn-action" id="btn-search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        `;
+
+        var btn = container.querySelector('#btn-search');
+        var input = container.querySelector('#search-input');
+
+        L.DomEvent.on(btn, 'click', this._handleSearch, this);
+        L.DomEvent.on(input, 'keydown', (e) => {
+            if (e.key === 'Enter') this._handleSearch();
+        });
+
+        return container;
+    },
+
+    _handleSearch: function() {
+        var inputVal = document.getElementById('search-input').value.trim();
+        if (!inputVal) return;
+
+        var result = this._parseInput(inputVal);
+
+        if (result) {
+            var zoom = result.zoom || 11;
+            this._moveTo(result.lat, result.lng, zoom, result.name);
+        } else {
+            alert("Không tìm thấy địa điểm hoặc định dạng không hợp lệ!");
+        }
+    },
+
+    _parseInput: function(text) {
+        let lat, lng, zoom, name = "Vị trí tìm kiếm";
+
+        try {
+            if (text.includes('wplace.live') || text.includes('lat=') && text.includes('lng=')) {
+                const url = new URL(text);
+                lat = parseFloat(url.searchParams.get('lat'));
+                lng = parseFloat(url.searchParams.get('lng'));
+                zoom = parseFloat(url.searchParams.get('zoom'));
+                name = "WPlace.live";
+                
+                if (!isNaN(lat) && !isNaN(lng)) return { lat, lng, zoom, name };
+            }
+
+            if (text.includes('google.com') || text.includes('@')) {
+                const googleRegex = /@(-?\d+\.\d+),(-?\d+\.\d+),(\d+\.?\d*)z/; 
+                const match = text.match(googleRegex);
+                if (match) {
+                    return {
+                        lat: parseFloat(match[1]),
+                        lng: parseFloat(match[2]),
+                        zoom: parseFloat(match[3]),
+                        name: "Google Maps"
+                    };
+                }
+            }
+
+            if (text.includes(',') && !text.includes('http')) {
+                const parts = text.split(',');
+                lat = parseFloat(parts[0]);
+                lng = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lng)) return { lat, lng, zoom: null, name: "toạ độ" };
+            }
+
+            const found = MY_LOCATIONS.find(item => item.name.toLowerCase().includes(text.toLowerCase()));
+            if (found) {
+                return { lat: found.lat, lng: found.lng, zoom: null, name: found.name };
+            }
+
+        } catch (e) {
+            console.error("Lỗi:", e);
+        }
+        return null;
+    },
+
+    _moveTo: function(lat, lng, zoom, title) {
+        if (window.currentMarker) this._map.removeLayer(window.currentMarker);
+
+        this._map.flyTo([lat, lng], zoom);
+
+        window.currentMarker = L.marker([lat, lng])
+            .addTo(this._map)
+            .bindPopup(`<b>${title}</b>`)
+            .openPopup();
+    }
+});
+
+var ShareControl = L.Control.extend({
+    options: { position: 'bottomright' },
+
+    onAdd: function(map) {
+        this._map = map;
+        var container = L.DomUtil.create('div', 'leaflet-control-custom');
+        L.DomEvent.disableClickPropagation(container);
+
+        container.innerHTML = `
+            <button class="btn-action btn-share" id="btn-share-link">
+                <i class="fa-solid fa-link"></i> Liên kết Wplace
+            </button>
+        `;
+
+        var btn = container.querySelector('#btn-share-link');
+        L.DomEvent.on(btn, 'click', this._copyLink, this);
+
+        return container;
+    },
+
+    _copyLink: function() {
+        var center = this._map.getCenter();
+        var zoom = this._map.getZoom();
+
+        var url = `https://wplace.live/?lat=${center.lat.toFixed(6)}&lng=${center.lng.toFixed(6)}&zoom=${zoom}`;
+
+        navigator.clipboard.writeText(url).then(function() {
+            alert("Đã sao chép liên kết vào bảng tạm:\n" + url);
+        }, function(err) {
+            console.error('Không thể chép: ', err);
+            prompt("Hãy sao chép liên kết dưới đây:", url);
+        });
+    }
+});
+
+map.addControl(new SearchControl());
+map.addControl(new ShareControl());
+
+L.control.scale().addTo(map);
+
+const ZoomViewer = L.Control.extend({
+    onAdd() {
+        const gauge = L.DomUtil.create('div');
+        gauge.style.width = '200px';
+        gauge.style.background = 'rgba(255,255,255,0.8)';
+        gauge.style.textAlign = 'left';
+        map.on('zoomstart zoom zoomend', (ev) => {
+            gauge.innerHTML = `Mức thu phóng: ${map.getZoom()}`;
+        });
+        return gauge;
+    }
+});
+
+const TilePosViewer = L.Control.extend({
+    onAdd() {
+        const BASE_TILE_SIZE = 256
+        const INV_BASE_TILE_SIZE = 1 / BASE_TILE_SIZE
+        const WPLACE_TILE_SIZE = 1000
+        const gauge = L.DomUtil.create('div');
+        gauge.style.width = '200px';
+        gauge.style.background = 'rgba(255,255,255,0.8)';
+        gauge.style.textAlign = 'left';
+        map.on('mousemove', (ev) => {
+            let latlng = ev.latlng;
+            let projectedPoint = map.project(latlng, 11); // https://gis.stackexchange.com/a/450815
+            let rawTileX = projectedPoint.x * INV_BASE_TILE_SIZE;
+            let rawTileY = projectedPoint.y * INV_BASE_TILE_SIZE;
+            let tileX = Math.floor(rawTileX);
+            let tileY = Math.floor(rawTileY);
+            let insideTileX = Math.round((rawTileX - tileX) * WPLACE_TILE_SIZE);
+            let insideTileY = Math.round((rawTileY - tileY) * WPLACE_TILE_SIZE);
+            gauge.innerHTML = `Vị trí tấm: ${tileX}, ${tileY},<br>(trong tấm: ${insideTileX}, ${insideTileY})`;
+        });
+        return gauge;
+    }
+});
+
+const zoomViewer = (new ZoomViewer()).addTo(map);
+const tilePosViewer = (new TilePosViewer()).addTo(map);
+    </script>
+</body>
+</html>
