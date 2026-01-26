@@ -31,10 +31,9 @@ Mỗi ngày, hãy chạy tệp `archive.py` một lần. Nếu thấy dòng `Del
 ### Xem dữ liệu
 Sau khi cào xong (lần đầu hay hôm sau), sẽ xuất hiện 1 tệp tên là `tile_availability.js`. Nếu không có tệp này thì không xem được bản đồ.
 
-Mở tệp `index.htm` bằng trình duyệt bất kì. Giao diện bản đồ sẽ xuất hiện như sau:
-[chưa có hình]
-
-*(Để đổi toạ độ ban đầu, hãy sửa hằng số `START_COORDS` trong tệp `index.htm`)*
+Mở tệp `index.htm` bằng trình duyệt bất kì. Giao diện bản đồ sẽ xuất hiện như sau, tuỳ vào khu vực và thời điểm được cào:
+*(Toạ đồ mặc định là Hà Nội. Để đổi toạ độ ban đầu, hãy sửa hằng số `START_COORDS` trong tệp `index.htm`)*
+<img width="1863" height="923" alt="msedge_nU2CNzJYDy" src="https://github.com/user-attachments/assets/7ed629b4-c124-45b1-9d45-0eaea4d9eb68" />
 
 Các tính năng thì cũng như bản đồ thông thường thôi. Nếu đã cào được nhiều ngày thì có thể dùng thanh trượt thời gian để xem ở các mốc khác nhau.
 
