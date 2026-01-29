@@ -26,7 +26,8 @@ Mặc định, chương trình sẽ cào trong khu vực Việt Nam và biển �
 Mở tệp `index.htm`, tìm đến chỗ có `timeInterval` bên trong `timeDimensionOptions`, đặt thành khoảng thời gian mà dữ liệu của bạn xem được. 
 
 ### Cào dữ liệu
-Mỗi ngày, hãy chạy tệp `archive.py` một lần. Nếu thấy dòng `Deleted <số> tiles.` và chương trình kết thúc là thành công. Một thư mục tên là `tiles` sẽ chứa tất cả dữ liệu ảnh. Nếu bị lỗi gì đó mà không biết sửa thì hãy xoá thư mục của ngày hôm nay (bên trong `tiles`) đi và chạy lại.
+Vì phần mềm không có sẵn dữ liệu hình ảnh, bạn phải cào dữ liệu từ máy chủ Wplace về máy tính bằng cách chạy tệp `archive.py`. **Cào ngày nào thì mới có ngày đó.** Ví dụ, nếu muốn có dữ liệu của 7 ngày liên tiếp, bạn phải cào 7 lần, mỗi ngày một lần.
+Mỗi lần cào, nếu thấy dòng `Deleted <số> tiles.` và chương trình kết thúc là thành công. Một thư mục tên là `tiles` sẽ chứa tất cả dữ liệu ảnh. Nếu bị lỗi gì đó mà không biết sửa thì hãy xoá thư mục của ngày hôm nay (bên trong `tiles`) đi và chạy lại.
 
 ### Xem dữ liệu
 Sau khi cào xong (lần đầu hay hôm sau), sẽ xuất hiện 1 tệp tên là `tile_availability.js`. Nếu không có tệp này thì không xem được bản đồ.
