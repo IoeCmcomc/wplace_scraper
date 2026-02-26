@@ -31,7 +31,7 @@ Mở tệp `index.htm`, tìm đến chỗ có `timeInterval` bên trong `timeDim
 Vì phần mềm không có sẵn dữ liệu hình ảnh, bạn phải cào dữ liệu từ máy chủ Wplace về máy tính bằng cách chạy tệp `archive.py`. **Cào ngày nào thì mới có ngày đó.** Ví dụ, nếu muốn có dữ liệu của 7 ngày liên tiếp, bạn phải cào 7 lần, mỗi ngày một lần.
 Mỗi lần cào, nếu thấy dòng `Deleted <số> tiles.` và chương trình kết thúc là thành công. Một thư mục tên là `tiles` sẽ chứa tất cả dữ liệu ảnh. Nếu bị lỗi gì đó mà không biết sửa thì hãy xoá thư mục của ngày hôm nay (bên trong `tiles`) đi và chạy lại.
 
-Bạn cũng có thể tải torrent một phần dữ liệu mà tôi đã cào từ tháng 8 năm 2025 đến 24/2/2026 bằng cách mở tệp vietnam_wplace_tiles_20250818_20260224.torrent bằng phần mềm tải torrent. Do dữ liệu này nằm trên máy tôi nên sẽ cần nhiều ngày để tải được hết.
+Bạn cũng có thể tải torrent một phần dữ liệu mà tôi đã cào từ tháng 8 năm 2025 đến 24/2/2026 bằng cách mở tệp _vietnam_wplace_tiles_20250818_20260225.torrent_ bằng phần mềm tải torrent. Do dữ liệu này nằm trên máy tôi nên sẽ cần nhiều ngày để tải được hết. Nếu bạn không muốn dùng torrent hoặc không đủ kiên nhẫn, bạn có thể tải bằng liên kết Google Drive [này](https://drive.google.com/file/d/1rqJssvA1AHTio_wUD_axYSn8Nd1IFoo8/view?usp=sharing).
 
 ### Xem dữ liệu
 Sau khi cào xong (lần đầu hay hôm sau), sẽ xuất hiện 1 tệp tên là `tile_availability.js`. Nếu không có tệp này thì không xem được bản đồ.
