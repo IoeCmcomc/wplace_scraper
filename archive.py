@@ -14,7 +14,7 @@ from generate_tile_availability import generate_tile_availability
 from config import *
 
 today_date = date.today().strftime("%Y%m%d")
-in_url = lambda x, y: "https://backend.wplace.live/files/s0/tiles/" + str(x) + "/" + str(y) + ".png"
+in_url = lambda x, y: PIXEL_TILE_URL_PATTERN.format(x=x,y=y)
 out_curr_path = lambda x, y: join(TILES_FOLDER, today_date, str(x), str(y) + ".webp")
 
 def make_wplace_dirs():
